@@ -1,22 +1,22 @@
 import os
-import warnings
 import sys
+import warnings
+import logging
 import pandas as pd
 import numpy as np
+import mlflow
+import mlflow.sklearn
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import ElasticNet
-from urllib.parse import urlparse
-import mlflow
-from mlflow.models import infer_signature
-import mlflow.sklearn
-import logging
-import pandas as pd
-from sklearn.model_selection import train_test_split
 import ssl
 
 # Disable SSL certificate verification
 ssl._create_default_https_context = ssl._create_unverified_context
+
+# Initialize logger before using it
+logging.basicConfig(level=logging.WARN)
+logger = logging.getLogger(__name__)
 
 # URL to your CSV file
 csv_url = "https://raw.githubusercontent.com/mlflow/mlflow/master/tests/datasets/winequality-red.csv"
@@ -24,13 +24,13 @@ csv_url = "https://raw.githubusercontent.com/mlflow/mlflow/master/tests/datasets
 # Load data
 try:
     data = pd.read_csv(csv_url, sep=";")
+    logger.info("Data loaded successfully.")
     # Split data into train and test sets
     train, test = train_test_split(data)
+    logger.info("Data split into train and test sets.")
 except Exception as e:
-    print(f"Error loading or splitting data: {e}")
+    logger.error(f"Error loading or splitting data: {e}")
 
-logging.basicConfig(level=logging.WARN)
-logger = logging.getLogger(__name__)
 
 def eval_metrics(actual, pred):
     rmse = np.sqrt(mean_squared_error(actual, pred))
@@ -38,9 +38,24 @@ def eval_metrics(actual, pred):
     r2 = r2_score(actual, pred)
     return rmse, mae, r2
 
+
 if __name__ == "__main__":
     warnings.filterwarnings("ignore")
     np.random.seed(40)
+
+    # Read the wine-quality csv file from the URL
+    csv_url = (
+        "https://raw.githubusercontent.com/mlflow/mlflow/master/tests/datasets/winequality-red.csv"
+    )
+    try:
+        data = pd.read_csv(csv_url, sep=";")
+    except Exception as e:
+        logger.exception(
+            "Unable to download training & test CSV, check your internet connection. Error: %s", e
+        )
+
+    # Split the data into training and test sets. (0.75, 0.25) split.
+    train, test = train_test_split(data)
 
     # The predicted column is "quality" which is a scalar from [3, 9]
     train_x = train.drop(["quality"], axis=1)
@@ -71,6 +86,4 @@ if __name__ == "__main__":
         mlflow.log_metric("mae", mae)
 
         #predictions = lr.predict(train_x)
-        #signature = infer_signature(train_x, predictions)
-
-        mlflow.sklearn.log_model(lr, "model")
+        #signature = infer_signature(train_x, predicti
